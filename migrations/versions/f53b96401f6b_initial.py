@@ -1,18 +1,18 @@
-"""init_clean
+"""initial
 
-Revision ID: 9fbe777c4802
+Revision ID: f53b96401f6b
 Revises: 
-Create Date: 2026-04-07 12:16:27.015184
+Create Date: 2026-04-08 21:03:11.453919
 
 """
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '9fbe777c4802'
+revision: str = 'f53b96401f6b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -31,19 +31,54 @@ def upgrade() -> None:
     op.create_table('users',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('email', sa.String(length=255), nullable=False),
-    sa.Column('password_hash', sa.String(length=255), nullable=True),
+    sa.Column('password_hash', sa.String(length=255), nullable=False),
     sa.Column('full_name', sa.String(length=255), nullable=False),
     sa.Column('phone', sa.String(length=30), nullable=True),
     sa.Column('date_of_birth', sa.Date(), nullable=True),
-    sa.Column('gender', sa.String(length=30), nullable=True),
-    sa.Column('role', sa.String(length=30), nullable=False),
-    sa.Column('is_admin', sa.Boolean(), nullable=False, server_default=sa.text('false')),
-    sa.Column('is_active', sa.Boolean(), nullable=False),
+    sa.Column('gender', sa.String(length=20), nullable=True),
+    sa.Column('role', sa.Enum('staff', 'student', name='userrole', native_enum=False), nullable=False),
+    sa.Column('is_admin', sa.Boolean(), server_default='false', nullable=False),
+    sa.Column('is_active', sa.Boolean(), server_default='true', nullable=False),
     sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email')
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
+    op.create_index(op.f('ix_users_role'), 'users', ['role'], unique=False)
+    op.create_table('audit_logs',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=True),
+    sa.Column('action', sa.Enum('view_session', 'update_student', 'delete_appointment', 'export_report', 'access_audio', name='audit_action'), nullable=False),
+    sa.Column('resource_type', sa.String(length=50), nullable=True),
+    sa.Column('resource_id', sa.UUID(), nullable=True),
+    sa.Column('ip_address', sa.String(length=50), nullable=True),
+    sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('details', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('notifications',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('type', sa.Enum('sms', 'email', 'in_app', name='notification_type'), nullable=False),
+    sa.Column('category', sa.Enum('crisis_alert', 'booking_confirmation', 'family_invitation', 'report_ready', 'general', name='notification_category'), nullable=False),
+    sa.Column('message', sa.Text(), nullable=False),
+    sa.Column('status', sa.Enum('pending', 'sent', 'failed', name='notification_status'), server_default='pending', nullable=False),
+    sa.Column('sent_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('refresh_tokens',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('token_hash', sa.String(length=255), nullable=False),
+    sa.Column('revoked', sa.Boolean(), server_default='false', nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
     )
     op.create_table('staff',
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -116,6 +151,11 @@ def downgrade() -> None:
     op.drop_table('appointments')
     op.drop_table('students')
     op.drop_table('staff')
+    op.drop_table('refresh_tokens')
+    op.drop_table('notifications')
+    op.drop_table('audit_logs')
+    op.drop_index(op.f('ix_users_role'), table_name='users')
+    op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_table('sessions')
     # ### end Alembic commands ###

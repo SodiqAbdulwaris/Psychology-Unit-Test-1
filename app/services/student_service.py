@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import insert, select, update, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.models.appointments import Appointment
 from app.models.crisis_logs import CrisisLog
 from app.models.students import Student
@@ -15,6 +16,7 @@ from app.models.users import UserRole
 from app.models.tables import sessions_table, users_table
 from app.schemas.students import StudentUpdate
 from app.utils.pagination import paginate
+
 
 
 def _paginate_payload(items: list[dict[str, Any]], total: int, limit: int, offset: int) -> dict[str, Any]:
@@ -38,6 +40,9 @@ def _normalize_email(email: str | None) -> str | None:
 
 class StudentService:
     @staticmethod
+    
+
+
     async def _create_user_for_student(
         db: AsyncSession,
         *,
@@ -50,7 +55,10 @@ class StudentService:
         gender: str | None,
         now: datetime,
     ) -> None:
-        # Students own a linked users row; create it automatically from student import data.
+        # Default password for all imported students
+        default_password = "ChangeMe123!"
+        password_hash = hash_password(default_password)
+
         await db.execute(
             insert(users_table).values(
                 id=user_id,
@@ -61,6 +69,7 @@ class StudentService:
                 role=UserRole.student.value,
                 is_admin=False,
                 is_active=True,
+                password_hash=password_hash,
                 created_at=now,
                 updated_at=now,
             )
@@ -417,3 +426,4 @@ class StudentService:
 
         await db.commit()
         return {"inserted": inserted, "skipped": skipped, "errors": errors}
+

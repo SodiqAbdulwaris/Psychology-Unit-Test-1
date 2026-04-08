@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .env
 env/
+reqs.txt
+*.docx
+scripts/
