@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     SUPABASE_URL: str
     SUPABASE_SERVICE_KEY: str
+
+    GROQ_API_KEY: str
+
+    
     AI_ENABLED: bool = False
     GCAL_ENABLED: bool = False
     SMS_ENABLED: bool = False
