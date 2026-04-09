@@ -1,4 +1,4 @@
-#READY FOR PR
+# main.py - FastAPI backend for session management, audio upload, transcription, and summarization using Groq API.
 
 from datetime import datetime
 from typing import Dict, Optional
