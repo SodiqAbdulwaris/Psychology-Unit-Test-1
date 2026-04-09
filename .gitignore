@@ -1,0 +1,16 @@
+.env
+
+__pycache__/
+*.pyc
+
+
+*.ogg
+*.wav
+*.mp3
+*.mp4
+*.m4a
+
+
+.DS_Store
+Thumbs.db
+
